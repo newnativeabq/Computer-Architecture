@@ -2,6 +2,7 @@
 
 import sys
 from instructions import InstructionSet
+from parser import Parser
 
 class Cursor():
     value = 0
@@ -13,7 +14,7 @@ class Cursor():
 class CPU:
     """Main CPU class."""
 
-    def __init__(self, msize=256, rsize=8, instructionset=InstructionSet(), rec_max=10):
+    def __init__(self, msize=256, rsize=8, instructionset=InstructionSet(), rec_max=100):
         """Construct a new CPU."""
         self.ram = self._seed_list(msize)
         self.reg = self._seed_list(rsize)
@@ -21,7 +22,19 @@ class CPU:
         self.rec_max = rec_max
         self.c1 = Cursor()
 
+    @property 
+    def pc(self):
+        return self.c1.value
     
+
+    def _sbin_to_int(self, line):
+        return int(line, 2)
+
+
+    def _convert_to_binary(self, line):
+        return bin(int(f'0b{line}', 2))
+
+
     def _seed_list(self, rsize):
         def _ret_zero():
             return 0*0
@@ -31,20 +44,22 @@ class CPU:
 
     def load(self, program=None):
         """Load a program into memory."""
+        def _parse_file(path):
+            p = Parser(path)
+            # print(p.raw)
+            # print('\n Processed \n', p.processed)
+            return p.processed
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        if program is None:
+            program = [
+                0b00000001,
+            ]
+        elif type(program) == str:
+            program = _parse_file(program)
+        else:
+            raise NotImplementedError('Cannot initialize program')
 
         for instruction in program:
             self.ram[address] = instruction
@@ -102,7 +117,7 @@ class CPU:
             # print(self.ram, self.reg, self.c1, rec)
             interrupt = _check_rec(rec)
             interrupt = _check_interrupt(
-                _run_instruction(self.ram[self.c1.value], interrupt)
+                _run_instruction(self.ram[self.pc], interrupt)
                 )
             rec += 1
 
