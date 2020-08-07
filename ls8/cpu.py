@@ -1,15 +1,35 @@
 """CPU functionality."""
 
 import sys
+from instructions import InstructionSet
+
+class Cursor():
+    value = 0
+
+    def __add__(self, x):
+        self.value += x
+
 
 class CPU:
     """Main CPU class."""
 
-    def __init__(self):
+    def __init__(self, msize=256, rsize=8, instructionset=InstructionSet(), rec_max=10):
         """Construct a new CPU."""
-        pass
+        self.ram = self._seed_list(msize)
+        self.reg = self._seed_list(rsize)
+        self.instructionset = instructionset
+        self.rec_max = rec_max
+        self.c1 = Cursor()
 
-    def load(self):
+    
+    def _seed_list(self, rsize):
+        def _ret_zero():
+            return 0*0
+    
+        return [_ret_zero() for _ in range(rsize)]
+
+
+    def load(self, program=None):
         """Load a program into memory."""
 
         address = 0
@@ -31,15 +51,6 @@ class CPU:
             address += 1
 
 
-    def alu(self, op, reg_a, reg_b):
-        """ALU operations."""
-
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
-        else:
-            raise Exception("Unsupported ALU operation")
-
     def trace(self):
         """
         Handy function to print out the CPU state. You might want to call this
@@ -60,6 +71,39 @@ class CPU:
 
         print()
 
+
+    def ram_read(self, idx):
+        return self.ram[int(idx)]
+
+
+    def ram_write(self, idx, val):
+        self.ram[int(idx)] = val
+
+
     def run(self):
         """Run the CPU."""
-        pass
+        def _run_instruction(instruction, interrupt):
+            if not interrupt:
+                method = self.instructionset(instruction)
+                signal = method(self.ram, self.reg, self.c1)
+                return signal
+            return True
+        
+        def _check_interrupt(signal):
+            return signal is not None
+
+        def _check_rec(rec):
+            return rec > self.rec_max
+
+        rec = 0
+
+        interrupt = False
+        while not interrupt:
+            # print(self.ram, self.reg, self.c1, rec)
+            interrupt = _check_rec(rec)
+            interrupt = _check_interrupt(
+                _run_instruction(self.ram[self.c1.value], interrupt)
+                )
+            rec += 1
+
+        print('Program Halted Successfully.', rec)
